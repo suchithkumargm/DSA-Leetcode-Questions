@@ -3,7 +3,22 @@
 **Difficulty:** Medium
 **Sheets:** NeetCode 150 | Striver SDE | Love Babbar 450
 **Pattern:** Hashing on node *identity* / Linked list deep copy
-**Date solved:** Sep 2026
+
+---
+
+## 0. Revision history
+
+| date | what happened |
+|---|---|
+| **Sep (first solve)** | HashMap version accepted. O(1) follow-up **deferred** — §7 was a sketch only. |
+| **Sep 18** | Cold revisit. HashMap solved in **11 min** unaided. Then reached the interleaving insight unaided on a technique never seen before — but the restore pass took **~90 min** of guided debugging. **Note closed.** |
+| **Sep 22 (R1)** | Full revisit, O(1) weave only. **Solved unaided in 30 min** (20-min cap → requeue). Reached for a **dummy node unprompted** in pass 3 — the habit flagged 7× in earlier sessions. |
+
+**Self-diagnosis on Sep 22, and it's the accurate one:**
+> *"Got the idea very fast, writing the code took a while."*
+
+That is the gap: **not concept recall — clean code under time pressure.** The caps exist to measure
+exactly this, which is why 30 min against a 20-min cap is information, not failure.
 
 ---
 
@@ -144,14 +159,10 @@ public Node copyRandomListBrute(Node head) {
     newTemp = newHead;
     while (oldTemp != null) {
         if (oldTemp.random != null) {
-            // find index of oldTemp.random in the original list
             int idx = 0;
             Node scan = head;
-            while (scan != oldTemp.random) {
-                scan = scan.next;
-                idx++;
-            }
-            // walk idx steps in the copy
+            while (scan != oldTemp.random) { scan = scan.next; idx++; }
+
             Node target = newHead;
             for (int i = 0; i < idx; i++) target = target.next;
             newTemp.random = target;
@@ -170,19 +181,26 @@ public Node copyRandomListBrute(Node head) {
 
 ### Why it's bad
 
-Every single `random` resolution is a linear search. We're doing `n` linear searches. Classic O(n²) smell.
+Every single `random` resolution is a linear search. We're doing `n` linear searches.
 
-> **The optimisation trigger:** *"I am repeatedly searching a collection for a specific element."* That sentence should immediately make you reach for a hash table. This is the same reflex as Two Sum going from O(n²) → O(n).
+> **The optimisation trigger:** *"I am repeatedly searching a collection for a specific element."* That sentence should immediately make you reach for a hash table. Same reflex as Two Sum going O(n²) → O(n).
 
 ---
 
-## 5. Approach 2 — Two-pass HashMap ✅ (my accepted solution)
+## 5. Approach 2 — Two-pass HashMap ✅
 
 ### Idea
 
 Replace the linear search with an O(1) lookup. Build `old node → new node` in one pass, then use it to wire everything in a second pass.
 
 The reason it needs two passes: when you're at node `X` in the wiring pass, `X.random` might point **forward** to a node you haven't reached yet. You can't link to a copy that doesn't exist. So pass 1 guarantees *every* copy exists before any linking begins.
+
+> ### 🔑 How to phrase this in an interview
+> Not *"the random can be added later in the list"* (vague, and the node isn't "added" — it already exists).
+> Say: **"a pointer can reference a node that appears later in traversal order, so its clone hasn't
+> been created yet at the moment I need it."**
+>
+> And note it's true of **`next` too**, not just `random` — it's forward references in general.
 
 ### Code
 
@@ -193,65 +211,70 @@ class Solution {
         HashMap<Node, Node> map = new HashMap<>();
 
         // Pass 1: create every copy, record old -> new
-        Node temp = head;
-        while (temp != null) {
-            Node newNode = new Node(temp.val);
-            map.put(temp, newNode);
-            temp = temp.next;
+        Node cur = head;
+        while (cur != null) {
+            map.put(cur, new Node(cur.val));
+            cur = cur.next;
         }
 
         // Pass 2: wire up next and random on the copies
-        temp = head;
-        Node newHead = map.get(temp);
-        Node newTemp = newHead;
-
-        while (temp != null) {
-            newTemp.next   = map.get(temp.next);
-            newTemp.random = map.get(temp.random);
-            temp    = temp.next;
-            newTemp = newTemp.next;
+        cur = head;
+        while (cur != null) {
+            Node clone  = map.get(cur);
+            clone.next   = map.get(cur.next);
+            clone.random = map.get(cur.random);
+            cur = cur.next;
         }
 
-        return newHead;
+        return map.get(head);
     }
 }
 ```
 
-### The invariant that makes it work
+> 🚩 **The cleanup I needed prompting on (Sep 18).** My cold version hand-rolled the second loop
+> with `newHead` / `prev` and an `if (newHead == null)` branch for the first node. All of it was
+> unnecessary: the map already knows the clone of `cur.next`, so both pointers come from lookups,
+> the return value is `map.get(head)`, and the null-input case disappears. ~14 lines → 4.
+>
+> This is the **head special-case habit** — see §16.
 
-> **At the top of every iteration, `newTemp == map.get(temp)`.**
+### The invariant
 
-- Base: `temp = head`, `newTemp = map.get(head)`. ✓
-- Step: we set `newTemp.next = map.get(temp.next)`, then advance *both*. So the new `newTemp` (`= old newTemp.next`) equals `map.get(old temp.next)` = `map.get(new temp)`. ✓
+> **At the top of every iteration, `clone == map.get(cur)`.**
 
-Because of this invariant, `newTemp` is redundant — you could write `map.get(temp).next = ...` everywhere and drop it. Keeping `newTemp` avoids a hash lookup per iteration, so it's slightly faster and arguably clearer.
+If you keep a separate `newTemp` pointer advancing in lockstep (a valid variant), that invariant is
+what justifies it — and it saves one hash lookup per iteration.
 
 ### Why `map.get(null)` returning `null` is load-bearing
 
-Both `temp.next` and `temp.random` can be `null`. `map.get(null)` returns `null` (key absent), which is *exactly* the value we want to assign. So the null cases handle themselves — no `if` needed. That's why the loop body is two clean lines.
+Both `cur.next` and `cur.random` can be `null`. `map.get(null)` returns `null` (key absent), which is *exactly* the value we want to assign. So the null cases handle themselves — no `if` needed.
 
-This is a small but genuinely elegant property of the solution. Point it out in an interview.
+> ⚠️ **Know that you're relying on it.** A `Map` implementation that rejects null keys on lookup —
+> `TreeMap`, `ConcurrentHashMap` — would throw here. Worth saying out loud; it shows you know
+> *why* it works rather than that it happened to.
 
 ### Complexity
 
-- **Time: O(n).** Two passes, O(1) hash ops each.
-- **Space: O(n)** for the map + O(n) for the output. Auxiliary space is O(n) — the map is what the follow-up asks you to eliminate.
+- **Time: O(n).** Two passes, **amortised** O(1) hash ops. (Say "amortised" — Java 8+ treeifies
+  long buckets, so true worst case per op is O(log n), not O(n).)
+- **Space: O(n)** aux for the map. The output's O(n) is the deliverable, not overhead.
 
 ---
 
 ## 6. Approach 2b — One-pass HashMap (variant, worth knowing)
 
-You can fuse the passes if, whenever you need a copy, you create it on demand instead of requiring it to already exist.
+Fuse the passes by creating a copy **on demand** instead of requiring it to already exist. The
+forward-reference problem evaporates: whoever points at a node first creates its clone.
 
 ```java
 public Node copyRandomList(Node head) {
     Map<Node, Node> map = new HashMap<>();
-    Node temp = head;
-    while (temp != null) {
-        Node copy = getOrCreate(map, temp);
-        copy.next   = getOrCreate(map, temp.next);
-        copy.random = getOrCreate(map, temp.random);
-        temp = temp.next;
+    Node cur = head;
+    while (cur != null) {
+        Node copy = getOrCreate(map, cur);
+        copy.next   = getOrCreate(map, cur.next);
+        copy.random = getOrCreate(map, cur.random);
+        cur = cur.next;
     }
     return map.get(head);
 }
@@ -262,57 +285,139 @@ private Node getOrCreate(Map<Node, Node> map, Node node) {
 }
 ```
 
-### ⚠️ `computeIfAbsent` + null key
+**Three things that make this correct, and all three are easy to get wrong:**
 
-`HashMap` allows a `null` key, so `map.computeIfAbsent(null, n -> new Node(n.val))` will happily call the lambda with `n = null` and **NPE on `n.val`**. That's why the `null` guard is inside `getOrCreate` and not optional.
+1. A clone created on demand is **val-only** — you do *not* wire its `next`/`random` at creation.
+   Those get filled when the main traversal reaches its original. Otherwise you'd recurse down the
+   whole list from one node.
+2. When the traversal later reaches a node whose clone already exists, you must **reuse** it, never
+   create a second one. That "create only if absent" check is the entire reason one pass works.
+3. ⚠️ **`computeIfAbsent` + null key:** `HashMap` allows a `null` key, so the lambda runs with
+   `n = null` and **NPEs on `n.val`**. The guard in `getOrCreate` is not optional.
 
-This is a nice concrete case of the `computeIfAbsent` gotcha — the lambda runs with whatever key you passed, including `null`.
-
-### Verdict
-
-Same O(n)/O(n). Fewer passes but more hash lookups per node (3 instead of ~2) and a helper method. **The two-pass version is easier to explain under pressure.** Know this one exists; ship the two-pass.
+**Verdict:** same O(n)/O(n), more hash lookups per node. Know it exists; **ship the two-pass** — it's
+easier to explain on a whiteboard.
 
 ---
 
-## 7. Approach 3 — O(1) space interleaving (the follow-up)
+## 7. Approach 3 — O(1) space interleaving ✅ **SOLVED**
 
-*Deferred — sketched here so future-me can pick it up.*
+*(Was deferred for months. Closed Sep 18, re-solved unaided Sep 22.)*
 
 ### Idea
 
-The map exists only to answer "given old node `Y`, where is `Y'`?" What if the answer were stored **in the list itself**?
-
-Weave each copy in directly after its original:
+The map exists only to answer *"given old node `Y`, where is `Y'`?"* So store the answer **in the
+list itself**. Weave each copy in directly after its original:
 
 ```
 A → A' → B → B' → C → C' → null
 ```
 
-Now `Y'` is literally `Y.next`. The map is gone.
+> ### 🔑 The whole technique in one sentence
+> **Placing each clone directly after its original turns the original's `next` field into the map —
+> the clone of any node `X` is reachable as `X.next`, in one hop, with no extra memory.**
 
-### Three passes
+That sentence reconstructs the code. *"Create a new node and add it next to the original, then point
+the randoms, then separate"* does **not** — that's the steps, restated. (§17)
 
-1. **Interleave.** For each old node `X`: `X' = new Node(X.val); X'.next = X.next; X.next = X';`
-2. **Set randoms.** For each old node `X` (step by 2): if `X.random != null`, then `X.next.random = X.random.next`.
-   Read it as: *copy-of-X dot random = copy-of (X's random)*. Both `.next`s are "jump to the copy".
-3. **Unzip.** Separate the two lists, **restoring the original's `next` pointers**. You must restore them — the problem says don't modify the input.
+### Three passes — and they cannot be merged
+
+1. **Interleave.** For each old `X`: `X' = new Node(X.val); X'.next = X.next; X.next = X';`
+   Advance with `cur = cur.next.next` — **not** `cur = cur.next`, which is now the clone.
+2. **Set randoms.** For each old `X`: `if (X.random != null) X.next.random = X.random.next;`
+   Read it as *clone-of-X dot random = clone-of (X's random)*. Both `.next`s mean "jump to the clone".
+3. **Unzip**, restoring the originals' `next` pointers. The problem forbids modifying the input, and
+   **LeetCode checks it** — leaving them mutated is a wrong answer, not just an interview nicety.
+
+> ### 🔴 THE INVARIANT — the bug a dry run cannot catch
+> **Pass 2 depends on every original still pointing at its clone.** So nothing may be restored until
+> pass 2 has finished the *whole* list.
+>
+> On Sep 18 I merged pass 2 and pass 3. If a node's `random` points **backward** to an
+> already-restored node, `cur.random.next` returns that node's real successor — an *original* —
+> instead of a clone.
+>
+> **A two-node trace can never catch this**, because a two-node list has no backward random. This is
+> why tracing is necessary but not sufficient: *before writing a loop, state what the data must look
+> like for that loop to be correct.*
+
+### ✅ Final solution (Sep 22, unaided)
+
+```java
+class Solution {
+    public Node copyRandomList(Node head) {
+
+        // PASS 1 — interleave: A → A' → B → B' → ...
+        Node cur = head;
+        while (cur != null) {
+            Node clone = new Node(cur.val);
+            clone.next = cur.next;
+            cur.next   = clone;
+            cur = clone.next;          // hop over the clone
+        }
+
+        // PASS 2 — randoms. Clone of X is X.next, so clone of X.random is X.random.next.
+        cur = head;
+        while (cur != null) {
+            Node clone = cur.next;
+            if (cur.random != null) clone.random = cur.random.next;
+            cur = clone.next;
+        }
+
+        // PASS 3 — unzip, restoring the originals. Dummy node = no head case, no tail guard.
+        Node dummy = new Node(-1);
+        Node newCur = dummy;
+
+        cur = head;
+        while (cur != null) {
+            Node clone = cur.next;
+            cur.next    = clone.next;   // restore the original
+            newCur.next = clone;        // append the clone to the new list
+            cur    = clone.next;
+            newCur = newCur.next;
+        }
+
+        return dummy.next;
+    }
+}
+```
+
+### 🔑 Why the dummy node in pass 3 is the real improvement
+
+The Sep 18 version built the clone list **in place** and needed two patches the dummy version
+doesn't:
+
+| | Sep 18 (no dummy) | Sep 22 (dummy) |
+|---|---|---|
+| last clone's `next` | needed `if (clone.next == null) break;` | falls out — nothing is appended after it |
+| `head == null` | needed `if (head == null) return null;` at the top | all 3 loops skip, `dummy.next` is null ✅ |
+| first clone | `newHead = head.next` captured before restoring | `dummy` is already the anchor |
+
+**Appending onto a dummy means there is no first case and no last case.** That's the payoff, and
+reaching for it unprompted on Sep 22 is the single biggest improvement across these sessions.
+
+### The Sep 18 bug catalogue (all in the weave version)
+
+| # | bug | why |
+|---|---|---|
+| 1 | `cur` never advanced in pass 1 | infinite loop → OOM. The advance is `cur.next.next`, not `cur.next` |
+| 2 | `clone.random = cur.random` in pass 1 | points the clone at an **original**; and it can't be fixed in pass 1 anyway (forward references). Also a dead write — pass 2 overwrites it |
+| 3 | merged restore into pass 2 | ⚠️ **the invariant bug above** |
+| 4 | `clone.next.next` on the last clone | NPE — `clone.next` is already null |
+| 5 | advance overshoot after restoring | once `cur.next = clone.next` runs, `cur.next` *is* the next original, so `cur = cur.next.next` jumps one too far and lands on a clone |
+| 6 | `if (newHead == null)` branch in the unzip | the head special-case, again (§16) |
+| 7 | pass 3 starting at `head.next` | node A never restored → *"next pointer of node 7 was modified"* |
 
 ### Complexity
 
 - **Time: O(n)** — three linear passes.
-- **Space: O(1)** auxiliary. ✅
-
-### Why it's harder to write
-
-The unzip pass is where people bleed. You're advancing two pointers through one interleaved list and re-terminating both with `null`. Off-by-one on the last node is the standard bug.
+- **Space: O(1)** auxiliary. ✅ (Output is O(n) but that's the deliverable.)
 
 ---
 
-## 8. Dry run (Approach 2)
+## 8. Dry run — HashMap version
 
 **Input:** `[[7,null],[13,0],[11,4],[10,2],[1,0]]`
-
-Name the original nodes `A..E`:
 
 | Node | val | next | random |
 |---|---|---|---|
@@ -324,64 +429,67 @@ Name the original nodes `A..E`:
 
 ### Pass 1 — build the map
 
-| temp | action | map after |
-|---|---|---|
-| A | `new Node(7)` → A' | `{A→A'}` |
-| B | `new Node(13)` → B' | `{A→A', B→B'}` |
-| C | `new Node(11)` → C' | `{... C→C'}` |
-| D | `new Node(10)` → D' | `{... D→D'}` |
-| E | `new Node(1)` → E' | `{A→A', B→B', C→C', D→D', E→E'}` |
-| null | loop exits | |
-
-At this point A'..E' all exist but are **five disconnected islands** — every `next` and `random` is still `null`. This is the state my broken code returned from, and why nothing worked.
+After the loop: `{A→A', B→B', C→C', D→D', E→E'}`. A'..E' are **five disconnected islands** — every
+`next` and `random` is still null. This is the state my first broken version returned from.
 
 ### Pass 2 — wire them
 
-`newHead = map.get(A) = A'`, `newTemp = A'`
+| # | cur | `clone.next = map.get(cur.next)` | `clone.random = map.get(cur.random)` |
+|---|---|---|---|
+| 1 | A | `map.get(B)` = **B'** | `map.get(null)` = **null** |
+| 2 | B | `map.get(C)` = **C'** | `map.get(A)` = **A'** |
+| 3 | C | `map.get(D)` = **D'** | `map.get(E)` = **E'** |
+| 4 | D | `map.get(E)` = **E'** | `map.get(C)` = **C'** |
+| 5 | E | `map.get(null)` = **null** | `map.get(A)` = **A'** |
 
-| # | temp | newTemp | `newTemp.next = map.get(temp.next)` | `newTemp.random = map.get(temp.random)` | advance to |
+Serialised: `[[7,null],[13,0],[11,4],[10,2],[1,0]]` ✅
+
+**No cross-contamination, structurally:** every value written is `map.get(...)`, and the map's
+*values* are all new nodes — so no clone can point into the old list. And nothing writes to
+`cur.anything`, so the original is untouched.
+
+---
+
+## 8b. Dry run — interleaving version, `A → B`
+
+The two-node case, which is the one that broke repeatedly on Sep 18.
+
+**After pass 1:** `A → A' → B → B' → null`
+
+**Pass 2:** clone-of-A's random = `A.random.next`; same for B. (Guard the nulls.)
+
+**Pass 3**, `dummy`, `newCur = dummy`, `cur = A`:
+
+| iter | clone | `cur.next = clone.next` | `newCur.next = clone` | `cur = clone.next` | `newCur` |
 |---|---|---|---|---|---|
-| 1 | A | A' | `map.get(B)` = **B'** | `map.get(null)` = **null** | temp=B, newTemp=B' |
-| 2 | B | B' | `map.get(C)` = **C'** | `map.get(A)` = **A'** | temp=C, newTemp=C' |
-| 3 | C | C' | `map.get(D)` = **D'** | `map.get(E)` = **E'** | temp=D, newTemp=D' |
-| 4 | D | D' | `map.get(E)` = **E'** | `map.get(C)` = **C'** | temp=E, newTemp=E' |
-| 5 | E | E' | `map.get(null)` = **null** | `map.get(A)` = **A'** | temp=null, newTemp=null |
+| 1 | A' | `A.next = B` ✅ restored | `dummy.next = A'` | `cur = B` | A' |
+| 2 | B' | `B.next = null` ✅ restored | `A'.next = B'` | `cur = null` | B' |
+| exit | | | | | |
 
-Loop exits (`temp == null`).
+`B'.next` is never assigned → stays null ✅ (this is the guard the dummy version doesn't need).
 
-### Result
+Return `dummy.next` = `A' → B' → null`. Originals: `A → B → null`. ✅
 
-```
-A'(7) → B'(13) → C'(11) → D'(10) → E'(1) → null
- │        │         │         │        │
-rand:   null       A'        E'       C'       A'
-```
+> ⚠️ **Always extend to three nodes mentally.** A two-node trace uses `prev`/`newCur` only once and
+> can hide bugs. And it has no backward random, so it cannot catch the §7 invariant bug at all.
 
-Serialised: `[[7,null],[13,0],[11,4],[10,2],[1,0]]` ✅ — matches input.
+### Edge cases
 
-**Check no cross-contamination:** every value written was `map.get(...)`, and the map's *values* are all new nodes. So no new node can ever point into the old list. And we never wrote to `temp.anything`, so the original is untouched. Both requirements satisfied structurally, not by luck.
-
-### Edge case: `head == null`
-
-- Pass 1: loop doesn't execute, map stays empty.
-- `newHead = map.get(null)` → `null`.
-- Pass 2: `temp == null`, loop doesn't execute.
-- Return `null`. ✅ No explicit guard needed.
-
-### Edge case: single node, self-random `A.random = A`
-
-- Pass 1: `{A→A'}`
-- Pass 2: `A'.next = map.get(null) = null`; `A'.random = map.get(A) = A'` — the copy points at itself, correctly mirroring the original. ✅
+| case | HashMap | Interleaving (dummy) |
+|---|---|---|
+| `head == null` | ✅ loops skip, `map.get(null)` = null | ✅ all 3 loops skip, `dummy.next` = null |
+| single node | ✅ | ✅ |
+| self-random `A.random = A` | ✅ `map.get(A)` = A' | ✅ `A.random.next` = A' |
+| all randoms null | ✅ `map.get(null)` = null | ✅ guard skips |
+| randoms pointing backward | ✅ | ✅ **only because passes 2 and 3 stay separate** |
 
 ---
 
 ## 9. The critical Java detail: identity vs equals
 
-`HashMap` uses `hashCode()` and `equals()` to find keys. `Node` overrides **neither**, so it inherits `Object`'s versions — which are **reference identity**.
+`HashMap` uses `hashCode()` and `equals()` to find keys. `Node` overrides **neither**, so it inherits `Object`'s versions — which are **reference identity**. That's exactly what we need: two different nodes both holding `val = 7` are *different keys*.
 
-That's exactly what we need. Two different nodes that both hold `val = 7` are *different keys*, because they're different objects.
-
-**If `Node` had overridden `equals`/`hashCode` by `val`**, this entire solution would break: two nodes with the same value would collide into one map entry, and duplicate-valued lists would produce a mangled copy.
+**If `Node` had overridden `equals`/`hashCode` by `val`**, this solution would break — duplicate-valued nodes would collide into one entry and produce a mangled copy.
 
 > **Interview answer:** "It works because `Node` doesn't override `equals`, so `HashMap` falls back to reference equality — which is the semantics I want. If I needed to guarantee that regardless of the class, I'd use `IdentityHashMap`, which uses `==` and `System.identityHashCode()` by contract."
 
@@ -391,61 +499,80 @@ Mentioning `IdentityHashMap` unprompted is a strong signal.
 
 ## 10. Complexity summary
 
-| Approach | Time | Aux Space | Notes |
+| Approach | Time | Aux Space | Status |
 |---|---|---|---|
-| Brute force (index walk) | O(n²) | O(1) | Repeated linear search |
-| **Two-pass HashMap** ✅ | **O(n)** | **O(n)** | Clearest to explain. What I shipped. |
-| One-pass HashMap | O(n) | O(n) | `computeIfAbsent`; watch null keys |
-| Interleaving | O(n) | **O(1)** | The follow-up. Unzip pass is fiddly. |
+| Brute force (index walk) | O(n²) | O(1) | mentioned only |
+| **Two-pass HashMap** | **O(n)** | O(n) | ✅ ship this by default — clearest to explain |
+| One-pass HashMap (`computeIfAbsent`) | O(n) | O(n) | know it, don't lead with it |
+| **Interleaving** | **O(n)** | **O(1)** | ✅ **closed** — the follow-up answer |
 
-Output space is O(n) in all cases — that's the deliverable, not overhead. "Auxiliary space" is what's being compared.
+Output space is O(n) in all cases — that's the deliverable, not overhead. "Auxiliary space" is what's being compared, and stating that distinction unprompted is worth a point.
 
 ---
 
 ## 11. Common bugs checklist
 
+**HashMap version**
 - [ ] Assigning `map.get(...)` to a **local** instead of to `node.field` → nothing gets built
-- [ ] `map.get(temp)` instead of `map.get(temp.next)` for the next pointer → self-loop → **infinite loop**
-- [ ] Forgetting to return `map.get(head)`; returning `head` instead
-- [ ] Trying to wire in a single pass without on-demand creation → NPE on forward `random` pointers
+- [ ] `map.get(temp)` instead of `map.get(temp.next)` → self-loop → **infinite loop**
+- [ ] Returning `head` instead of `map.get(head)`
+- [ ] Single pass without on-demand creation → NPE / nulls on forward references
 - [ ] `computeIfAbsent` with a `null` key → NPE inside the lambda
-- [ ] Interleaving version: forgetting to restore the original list's `next` in the unzip pass
-- [ ] Interleaving version: not null-guarding `X.random` before `X.random.next`
+- [ ] Hand-rolled `newHead`/`prev` bookkeeping in pass 2 — unnecessary (§16)
 - [ ] Redundant `map.put(null, null)` — harmless but invites the question
+
+**Interleaving version**
+- [ ] `cur = cur.next` in pass 1 instead of `cur.next.next` → infinite loop
+- [ ] Setting `clone.random` in pass 1 → dead write **and** points at an original
+- [ ] ⚠️ **Merging the restore into the random pass** → breaks on backward randoms (§7)
+- [ ] Not null-guarding `X.random` before `X.random.next`
+- [ ] `clone.next.next` on the final clone → NPE
+- [ ] Advance overshoot after restoring `cur.next`
+- [ ] Starting pass 3 at `head.next` → first original never restored
+- [ ] Forgetting to restore the originals at all → **LeetCode fails you**
+
+**Process**
+- [ ] 🚩 `System.out.println` left in submitted code — **3 sessions running**
+- [ ] 🚩 Dead traversal loop left in after removing the println body
+- [ ] 🚩 Two variables holding the same value (`newHead` == `dummy`) — one is redundant
 
 ---
 
 ## 12. Interview Q&A
 
 **Q: Why two passes? Why can't you do it in one?**
-Because `random` can point forward. At node `X`, `X.random` may be a node you haven't visited, so its copy doesn't exist yet. Pass 1 guarantees every copy exists. *(You can do one pass if you create copies lazily on demand — see §6 — but the two-pass version is cleaner.)*
+Because a pointer can reference a node that appears later in traversal order, so its clone doesn't exist when I need it. True of `next` as well as `random`. Pass 1 guarantees every clone exists. *(You can do one pass with lazy creation — §6 — but the two-pass version is cleaner.)*
 
 **Q: Why does `HashMap<Node, Node>` work when `Node` has no `equals`/`hashCode`?**
-It inherits identity semantics from `Object`, which is precisely the lookup I want. See §9.
+It inherits identity semantics from `Object`, which is precisely the lookup I want. §9.
 
 **Q: Can you do it in O(1) extra space?**
-Yes — interleave copies into the original list so `X.next` is `X'`, set randoms via `X.next.random = X.random.next`, then unzip and restore. §7.
+Yes — interleave clones into the original list so `X.next` is `X'`, set randoms via `X.next.random = X.random.next`, then unzip and restore. §7.
 
-**Q: What if the list has a cycle in the `next` pointers?**
-The HashMap version doesn't terminate as written — but neither does the problem's definition of a list. If cycles were allowed, the fix is to guard pass 1 with a visited check (`if (map.containsKey(temp)) break;`). Pass 2 would also need the same bound. The interleaving approach breaks badly under cycles.
+**Q: Why can't the unzip and the random pass be combined?**
+Because the random pass reads `X.random.next` to find a clone — which only works while every original still points at its clone. Restoring as you go breaks that for any backward-pointing random. **This is the follow-up that separates people who memorised the code from people who understand it.**
+
+**Q: What if the `next` pointers contain a cycle?**
+The HashMap version doesn't terminate as written — but neither does the problem's definition of a list. If cycles were allowed, guard pass 1 with `if (map.containsKey(cur)) break;`. The interleaving approach breaks badly under cycles.
 
 **Q: Recursive solution?**
-Yes — a memoised DFS. `copy(node)` returns `map.get(node)` if present, else creates the copy, memoises *before* recursing (critical — otherwise `random` cycles infinitely), then recurses into `next` and `random`. O(n) time, O(n) space plus O(n) stack. The memo-before-recurse ordering is the whole trick.
+A memoised DFS. `copy(node)` returns the memo if present, else creates the clone, **memoises before recursing** (critical — otherwise `random` cycles infinitely), then recurses into `next` and `random`. O(n) time, O(n) space plus O(n) stack. The memo-before-recurse ordering is the whole trick.
 
 **Q: Does this generalise?**
-Directly. This is **graph cloning**. LC 133 (Clone Graph) is the same algorithm with an adjacency list instead of two fixed pointers — same `old → new` map, same "create all nodes first, then wire edges" structure.
+Directly. This is **graph cloning**. LC 133 (Clone Graph) is the same algorithm with an adjacency list instead of two fixed pointers.
 
 ---
 
 ## 13. Pattern extraction
 
+**HashMap version:**
 > **When you need to translate references from one object graph into references in a parallel graph, build an `original → copy` map first, then wire edges using it.**
 
-The map is the translation dictionary. Every deep-copy-with-arbitrary-references problem is this.
+**Interleaving version:**
+> **Place each clone directly after its original so the list becomes its own map — the clone of `X` is `X.next`, one hop, no extra memory.**
 
-And the meta-lesson from the O(1) follow-up:
-
-> **When you need a side map keyed by nodes, ask whether the mapping can be embedded into the structure itself.** Interleaving here; parent pointers, in-place marking, and sign-flipping elsewhere.
+**The meta-lesson, and the transferable one:**
+> **When you need a side map keyed by nodes, ask whether the mapping can be embedded into the structure itself.** Interleaving here; parent pointers, in-place marking, index-as-hash and sign-flipping elsewhere.
 
 ---
 
@@ -457,57 +584,93 @@ And the meta-lesson from the O(1) follow-up:
 | 1485 | Clone Binary Tree With Random Pointer | Direct tree analogue |
 | 430 | Flatten Multilevel Doubly Linked List | Extra pointer per node, in-place rewiring |
 | 146 | LRU Cache | HashMap + hand-rolled DLL; map-to-node lookup |
-| 141/142 | Linked List Cycle I/II | Pointer manipulation discipline |
-| 61 | Rotate List | Multi-pointer traversal with restoration |
+| 287 | Find the Duplicate Number | "embed the mapping in the structure" — index-as-pointer |
+| 41 | First Missing Positive | same meta-lesson: in-place marking instead of a side set |
+| 25 | Reverse Nodes in k-Group | in-place pointer choreography; dummy node discipline |
 
-**Next up:** LC 133 (Clone Graph) while this pattern is warm — it's the same solution and it'll cement the idea. Then come back for the O(1) interleaving follow-up here.
+**Next up:** LC 133 (Clone Graph) while this is warm — same solution, different container.
 
 ---
 
 ## 15. Final accepted code
 
+### Ship-by-default: two-pass HashMap
+
 ```java
-/*
-// Definition for a Node.
-class Node {
-    int val;
-    Node next;
-    Node random;
-
-    public Node(int val) {
-        this.val = val;
-        this.next = null;
-        this.random = null;
-    }
-}
-*/
-
 class Solution {
     public Node copyRandomList(Node head) {
-
         HashMap<Node, Node> map = new HashMap<>();
 
-        Node temp = head;
-        while (temp != null) {
-            Node newNode = new Node(temp.val);
-            map.put(temp, newNode);
-            temp = temp.next;
+        Node cur = head;
+        while (cur != null) {
+            map.put(cur, new Node(cur.val));
+            cur = cur.next;
         }
 
-        temp = head;
-        Node newHead = map.get(temp);
-        Node newTemp = newHead;
-
-        while (temp != null) {
-            newTemp.next   = map.get(temp.next);
-            newTemp.random = map.get(temp.random);
-            temp    = temp.next;
-            newTemp = newTemp.next;
+        cur = head;
+        while (cur != null) {
+            Node clone   = map.get(cur);
+            clone.next   = map.get(cur.next);
+            clone.random = map.get(cur.random);
+            cur = cur.next;
         }
-
-        return newHead;
+        return map.get(head);
     }
 }
 ```
+**O(n) time · O(n) aux**
 
-**Time:** O(n) · **Space:** O(n) · Beats ~100% runtime *(noisy — the complexity is what matters)*
+### Follow-up answer: O(1) interleaving — see §7 for the full version.
+**O(n) time · O(1) aux**
+
+---
+
+## 16. 🔴 Recurring habit — the hand-rolled head special case
+
+Across LC 138 and LC 25 I wrote this shape **seven times**:
+
+```java
+if (newHead == null) { newHead = x; prev = newHead; }
+else { prev.next = x; prev = x; }
+```
+
+Every single time it was deletable. It showed up in **both** LC 138 versions — the HashMap pass 2
+and the interleave unzip.
+
+> **Standing rule: on any linked-list problem where the head can change, or where you're building a
+> new list, reach for the dummy node FIRST — before writing the loop, not as cleanup afterwards.**
+
+**Causal chain:** branchy loop → too many moving parts to hold in your head → you stop tracing and
+start guessing → hours lost. The Sep 18 session is the proof: four rounds of edit-and-resubmit on a
+loop that was hard to trace *because* of the branch.
+
+**Sep 22 status: ✅ applied unprompted.** First session where the dummy came first. Keep it.
+
+Applies to: **19, 21, 24, 25, 61, 82, 83, 86, 92, 138, 203.**
+
+---
+
+## 17. 🔴 Stating the pattern — reason, not steps
+
+Asked for the one-line pattern after the Sep 22 revisit, I said:
+
+> *"create a new node and add it next to the original node, then point the randoms to their correct
+> positions, then separate the new nodes into a new list"*
+
+That's **the steps, restated**. It describes what my hands did. It does not let me reconstruct the
+code, and it's the version that's gone in a day.
+
+The pattern is the **reason**:
+
+> **Placing each clone directly after its original turns the original's `next` field into the map.**
+
+From that one fact, everything follows: why `cur.random.next` finds the right clone, why the
+original list must be restored afterwards, and why the restore can't share a pass with the randoms.
+
+> **Same failure recorded in the LC 169 and LC 1552 docs.** This is now a three-problem pattern:
+> when asked for the one-liner, I default to mechanics. **Memorise the reason, not the steps.**
+
+---
+
+*Sep 22 R1 — O(1) weave solved unaided in 30 min (20-min cap → requeued). Dummy node reached
+unprompted for the first time. Remaining gap, self-diagnosed and accurate: **idea fast, code slow.***
