@@ -20,7 +20,7 @@ Constraints: at most 100 calls; `pop`/`peek` are only called on a non-empty queu
 
 A stack is LIFO, a queue is FIFO — **exact opposites**, which is the whole reason this works:
 
-> ### 🔑 The fact
+> ### The fact
 > **Reversing a reversal restores the original order.**
 
 Pour stack A into stack B one element at a time and B holds A's contents **backwards** — i.e. in
