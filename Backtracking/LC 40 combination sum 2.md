@@ -312,20 +312,6 @@ Dead conditions are noise that hides the real structure. After the `break`, both
 
 ---
 
-## Related problems
-
-| Problem | Diff from this code |
-|---|---|
-| **LC 39 — Combination Sum** | Unlimited reuse, no input duplicates. Change `i + 1` → `i` in the recursive call. Drop the dedup while-loop. **One character of real difference.** |
-| **LC 46 — Permutations** | Order matters → use a `visited[]` array instead of an index cursor |
-| **LC 47 — Permutations II** | Permutations + duplicates → same sort-then-skip idea, but the skip condition also checks `visited[i-1]` |
-| **LC 78 — Subsets** | No target — collect at every node instead of only at `target == 0` |
-| **LC 90 — Subsets II** | Subsets + duplicates → identical skip pattern to this problem |
-
-LC 40 → LC 90 is the tightest pair. If you can do this one, LC 90 is the same skeleton with the target check removed.
-
----
-
 ## Trace to verify a rewrite
 
 ```

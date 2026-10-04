@@ -277,15 +277,3 @@ cycle question: LC 142, LC 202 (Happy Number), LC 287 (Find the Duplicate Number
 8. **Never offer a solution that mutates the input** without attaching the objection yourself.
 
 ---
-
-## 13. Related problems
-
-| # | Problem | Connection |
-|---|---|---|
-| **142** | Linked List Cycle II | Same pointers plus the entry-point derivation. Asked far more often. |
-| 287 | Find the Duplicate Number | Floyd's on an **array** treated as a function graph |
-| 202 | Happy Number | Floyd's on a number sequence — no list at all |
-| 876 | Middle of the Linked List | Same two-speed pointers, different payoff |
-| 234 | Palindrome Linked List | Find the middle with two pointers, then reverse half |
-| 19 | Remove Nth Node From End | Two pointers with a **fixed** gap rather than a closing one |
-| 138 | Copy List with Random Pointer | Reference-identity hashing (the HashSet version here) |

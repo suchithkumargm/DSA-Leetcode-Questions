@@ -362,14 +362,3 @@ This sentence reconstructs the code. *"Increment if same, decrement if not, rese
     pick one and justify it. Ninety seconds, and it's scored.
 
 ---
-
-## 13. Related problems
-
-| # | Problem | Shared idea |
-|---|---|---|
-| **229** | Majority Element II (> n/3) | ⭐ generalised Boyer-Moore, two candidates, **verification mandatory** |
-| 1150 | Check If a Number Is Majority Element | binary search on a sorted array for the same threshold |
-| 137 | Single Number II | solve bitwise for the answer (§6's technique, where it's required) |
-| 260 | Single Number III | bit manipulation + partitioning |
-| 136 | Single Number | XOR cancellation — same "pair off and see what survives" instinct |
-| LCCI 17.10 | Majority Element | same problem, existence **not** guaranteed → verification pass |

@@ -358,16 +358,3 @@ rederive under pressure. Without it you end up reaching for null sentinels or, w
    changed inside it.
 
 ---
-
-## 13. Related problems
-
-| # | Problem | Connection |
-|---|---|---|
-| 107 | Level Order Traversal II | reverse the result |
-| 103 | Zigzag Level Order | alternate direction per level |
-| 199 | Binary Tree Right Side View | last node of each level |
-| 637 | Average of Levels | aggregate per level |
-| 111 | Minimum Depth of Binary Tree | first leaf found by BFS |
-| 116 | Populating Next Right Pointers | link within a level |
-| 994 | Rotting Oranges | multi-source BFS on a grid — same size-based level counting, levels are time steps |
-| 127 | Word Ladder | BFS where levels are transformation steps |

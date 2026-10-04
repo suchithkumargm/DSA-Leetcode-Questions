@@ -328,17 +328,6 @@ Why: total runtime here is a few milliseconds, dominated by `Arrays.sort` plus J
 
 ---
 
-## 11. Related Problems to Revisit
-
-| # | Problem | Connection |
-|---|---|---|
-| 530 | Minimum Absolute Difference in BST | in-order traversal gives sorted order; same adjacency argument |
-| 783 | Minimum Distance Between BST Nodes | duplicate of 530 |
-| 539 | Minimum Time Difference | sort + adjacency, with circular wraparound edge case |
-| 561 | Array Partition | sort + adjacent pairing, greedy |
-| 1877 | Minimize Maximum Pair Sum | sort + two-pointer pairing |
-| 2250 | Find All K-Distant Indices | "collect all achieving a condition" scan pattern |
-
 ---
 
 ## Final Answer (the version to remember)

@@ -284,16 +284,3 @@ that same shape with a different combine step.
    beyond depth.
 
 ---
-
-## 12. Related problems
-
-| # | Problem | Connection |
-|---|---|---|
-| 111 | Minimum Depth | ⚠️ **not** symmetric — a null child isn't a leaf; BFS can exit early |
-| 110 | Balanced Binary Tree | same recursion with a −1 sentinel to avoid O(n²) |
-| 543 | Diameter of Binary Tree | same recursion; record `left + right` sideways |
-| 124 | Binary Tree Maximum Path Sum | same shape, harder combine step |
-| 102 | Level Order Traversal | the BFS chassis this problem's iterative version reuses |
-| 100 | Same Tree | children's answers combined with `&&` |
-| 101 | Symmetric Tree | mirrored version of the same recursion |
-| 226 | Invert Binary Tree | same traversal, mutating instead of aggregating |
