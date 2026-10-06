@@ -322,3 +322,4 @@ node before the loop, not after the bug.**
 7. **A cycle shows up as a hang or TLE**, which looks nothing like a wiring bug — trace the first
    two iterations when a list problem hangs.
 8. **Delete leftover guards and debug prints** before submitting.
+9. 
