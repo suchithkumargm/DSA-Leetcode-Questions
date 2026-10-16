@@ -1,210 +1,169 @@
 # LC 40 — Combination Sum II
 
-**Difficulty:** Medium
-**Topics:** Backtracking, Recursion, Sorting
-**Link:** https://leetcode.com/problems/combination-sum-ii/
-**Final result:** Beats 99%
+**Difficulty:** Medium · **Topics:** Backtracking, Recursion, Sorting
+**Pattern:** Backtracking with structural deduplication
 
 ---
 
-## Problem
+## 1. Problem
 
-Given `candidates[]` (may contain duplicates) and a `target`, return all **unique** combinations that sum to `target`.
+Given `candidates[]` (which **may contain duplicates**) and a `target`, return all **unique**
+combinations summing to `target`. Each number may be used **at most once**.
 
-Each number may be used **at most once**.
 Combinations are sets, not sequences — `[1,2,5]` and `[2,1,5]` are the same answer.
 
 ```
-Input:  candidates = [10,1,2,7,6,1,5], target = 8
-Output: [[1,1,6],[1,2,5],[1,7],[2,6]]
+candidates = [10,1,2,7,6,1,5], target = 8
+→ [[1,1,6], [1,2,5], [1,7], [2,6]]
 ```
 
-Note there are **two** 1s in the input, and `[1,1,6]` legitimately uses both. But `[1,7]` must appear only **once**, even though either 1 could form it. That tension is the whole problem.
+Note the input has **two** 1s, and `[1,1,6]` legitimately uses both. But `[1,7]` must appear
+**once**, even though either 1 could form it.
+
+> **That tension is the whole problem:** block too little and `[1,7]` appears twice; block too much
+> and `[1,1,6]` disappears.
 
 ---
 
-## The core difficulty
+## 2. The core difficulty — two things that look alike
 
-Two separate things are easy to confuse:
-
-| | Meaning | Handled by |
+| | Question | Handled by |
 |---|---|---|
 | **Element reuse** | Can I pick `candidates[i]` twice? | `index + 1` in the recursive call |
-| **Duplicate combinations** | Can two different index-sets produce the same value-list? | Skipping equal values at the same level |
+| **Duplicate combinations** | Can two different index-sets produce the same value-list? | Skipping equal values **at the same level** |
 
-**LC 39 (Combination Sum I)** = reuse allowed, no duplicates in input → only needs `index` (not `index+1`).
-**LC 40 (this one)** = reuse forbidden, duplicates in input → needs `index+1` **and** the skip.
+- **LC 39** = reuse allowed, distinct input → only needs `index` (not `index+1`)
+- **LC 40** = reuse forbidden, duplicate input → needs `index+1` **and** the skip
 
-Getting `index+1` right does not solve duplicates. That was the mistake that cost the most iterations.
+> **Getting `index + 1` right does not solve duplicates.** They're independent mechanisms, and this
+> is the confusion that costs the most time on this problem.
 
 ---
 
-## Journey
+## 3. The trap: filtering instead of pruning
 
-### v1 — Brute force: pick / not-pick + HashSet
+The natural first attempt is to generate everything and let a `HashSet` discard duplicates.
 
 ```java
 Set<List<Integer>> ans = new HashSet<>();
 Arrays.sort(candidates);
-findCombination(0, target, candidates, new ArrayList<>(), ans);
+// ... standard pick / skip, index + 1 on both branches
 return new ArrayList<>(ans);
-
-private void findCombination(int index, int target, int[] candidates,
-                             List<Integer> combination, Set<List<Integer>> ans) {
-    if (index == candidates.length || target < 0) return;   // BUG: ordering
-    if (target == 0) { ans.add(new ArrayList<>(combination)); return; }
-
-    // pick
-    int currEle = candidates[index];
-    combination.add(currEle);
-    findCombination(index + 1, target - currEle, candidates, combination, ans);
-    combination.remove(combination.size() - 1);
-
-    // don't pick
-    findCombination(index + 1, target, candidates, combination, ans);
-}
 ```
 
-**Idea:** classic binary recursion — every element is either in or out. Generate everything, let a `HashSet` throw away duplicates.
+It's **correct** — and it **TLEs**.
 
-**Why the set works at all:** because of `Arrays.sort`. Sorting makes every combination come out in ascending order, so two equal multisets serialise to *identical* lists, and `List.equals` catches them. Without the sort, `[1,2,5]` and `[5,2,1]` would be different keys and the set would fail.
+### Why it works at all
 
-#### Bug: base case ordering
+Only because of `Arrays.sort`. Sorting makes every combination come out in ascending order, so two
+equal multisets serialise to *identical* lists and `List.equals` catches them. Unsorted, `[1,2,5]`
+and `[5,2,1]` are different keys and the set fails.
 
-```
-candidates = [1], target = 1
-  pick the 1 → findCombination(index=1, target=0)
-    check 1: index == length → return          ← exits here
-    check 2: target == 0                        ← never reached
-Result: [] instead of [[1]]
-```
+### ⚠️ Why it TLEs rather than just running a bit slower
 
-`target == 0` is a **success** condition and must be tested before any **dead-end** condition. When you exhaust the array with target exactly 0, that's a win, not a failure.
+This is the important part, and it isn't about hashing cost.
 
-> **General rule:** in backtracking, order base cases *success first, failure second*. Success is a fact about the state; failure is a fact about the remaining options.
+> **The work is exponential while the output stays tiny.**
+>
+> On input like `[1,1,1,…,1]` with a small target there are 2ⁿ root-to-leaf paths producing a
+> handful of distinct combinations. The set deduplicates the *results* but does nothing about the
+> *paths* — every one is still walked.
 
-#### Why v1 is slow
+**Filtering fixes the output. Pruning fixes the work.** A `HashSet` on the answers can never
+recover the time already spent generating them.
 
-- Hashes every candidate list — walks all `k` elements to compute `hashCode`, then again for `equals` on collisions
-- Still **generates** all duplicate branches before discarding them — the wasted work already happened
-- Rebuilds a fresh `ArrayList` from the set at the end
+Secondary costs, real but not the reason for the TLE: hashing walks all `k` elements per list, then
+again for `equals` on collisions, and the final `new ArrayList<>(set)` rebuilds everything.
 
-Beats ~15%.
+> **General rule for enumeration problems: dedup by construction, never by filtering.**
 
 ---
 
-### v2 — Attempt the skip in the not-pick branch (broken)
+## 4. Where duplicates come from
 
-**The reasoning that got here:** the array is sorted, so duplicates are adjacent. When I take the *not-pick* branch on `candidates[index]`, I'm committing to "no copy of this value appears in this subtree." So the not-pick branch should jump past **all** equal elements, not just one.
+Sort first, so equal values are adjacent: `[1, 1, 2, 5]`.
 
-That reasoning is correct. The implementation was not.
+At index 0 you **pick** the first 1. Separately, at index 0 you **skip** it, then at index 1 you
+**pick** the second 1. Both paths produce combinations starting with a single 1 — identical,
+because the two 1s are interchangeable.
 
-```java
-while (index + 1 < n && candidates[index] == candidates[index + 1]) index++;
-findCombination(index, target, ...);      // BUG: lands ON the last duplicate
-```
+> ### 🔑 The fact
+> **At a given recursion level, don't start a combination with a value you've already tried at that
+> level.** Concretely: after *declining* a value, skip every copy of it — not just one.
+>
+> Equivalently: **nested** reuse of an equal value is fine (that's `[1,1,6]`); **sibling** reuse at
+> the same depth is the duplicate.
 
-```
-candidates = [1,1,1], index = 0
-  loop: c[0]==c[1] → index=1
-        c[1]==c[2] → index=2
-        c[2]==c[3] → out of bounds / stops
-  exits with index = 2  ← still pointing at a 1
-  recurse(2, ...) → picks that 1 → duplicate [1] generated anyway
-```
-
-The loop leaves `index` on the **last** duplicate, not **past** the run. Needed `index + 1` in the recursive call, or `index++` after the loop.
-
-Also `n` was undefined — didn't compile.
+The dedup therefore belongs in the loop's advance, or in the skip branch — **never inside the
+recursive call.**
 
 ---
 
-### v3 — Pivot to the for-loop pattern
+## 5. Formulation A — pick / skip
 
-Instead of pick / not-pick, loop over every possible **next** element:
-
-```java
-for (; index < candidates.length - 1; index++) {          // BUG: bound
-    int currEle = candidates[index];
-    combination.add(currEle);
-    findCombination(index + 1, target - currEle, candidates, combination, ans);
-    combination.remove(combination.size() - 1);
-    while (candidates[index] == candidates[index + 1]) index++;   // BUG: no guard
-}
-```
-
-**Why this shape is better:** the chain of not-pick branches in v1 is exactly a loop. Flattening it means the dedup lives in the loop increment, where it's natural — after finishing a value, advance past all its copies.
-
-Two bugs, pulling in **opposite directions**:
-
-1. `length - 1` → last element never picked. `[1,2]`, target 2: at `index=0` picks the 1, recurses to `findCombination(1, 1)` whose loop is `1 < 1` = false, immediate return. Back at top `index=1`, loop exits. `[2]` never generated.
-2. Inner `while` has no `index + 1 < length` guard → `ArrayIndexOutOfBoundsException` on `[1,1,1]`.
-
-Fixing (1) makes (2) **more** reachable, not less. Both must be fixed together — a good reminder that two bugs can mask each other.
-
----
-
-### v4 — Correct
+The binary-recursion shape. The dedup goes in the **skip** branch.
 
 ```java
-for (; index < candidates.length; index++) {
-    int currEle = candidates[index];
-    combination.add(currEle);
-    findCombination(index + 1, target - currEle, candidates, combination, ans);
-    combination.remove(combination.size() - 1);
-    while (index + 1 < candidates.length && candidates[index] == candidates[index + 1]) {
-        index++;
+class Solution {
+    public List<List<Integer>> combinationSum2(int[] candidates, int target) {
+        List<List<Integer>> ans = new ArrayList<>();
+        Arrays.sort(candidates);
+        findCombination(candidates, target, 0, new ArrayList<>(), ans);
+        return ans;
+    }
+
+    private void findCombination(int[] candidates, int target, int index,
+                                 List<Integer> combination, List<List<Integer>> ans) {
+        if (target == 0) {                                  // SUCCESS first
+            ans.add(new ArrayList<>(combination));
+            return;
+        }
+        if (index >= candidates.length || candidates[index] > target) {
+            return;                                         // sorted ⇒ the whole tail is dead
+        }
+
+        // 1. PICK — index + 1, no reuse
+        combination.add(candidates[index]);
+        findCombination(candidates, target - candidates[index], index + 1, combination, ans);
+        combination.remove(combination.size() - 1);
+
+        // 2. SKIP — advance past EVERY copy of the declined value
+        int skipped = candidates[index];
+        int next = index + 1;
+        while (next < candidates.length && candidates[next] == skipped) next++;
+        findCombination(candidates, target, next, combination, ans);
     }
 }
 ```
 
-Trailing `while` advances to the last duplicate, then the for-update `index++` steps past the run. Correct.
+### ⚠️ Two bugs specific to this shape
 
-Beats ~36% — still carrying the now-useless `HashSet`.
-
----
-
-### v5 — Drop the set
-
-**Careful about the reason.** "I'm sorting, so I don't need the set" is *wrong* — v1 sorted too and absolutely needed it.
-
-Sorting only makes duplicates **adjacent**, which is what makes the skip *possible*. The **skip** is what removes duplicates.
-
-**The actual argument:** at each recursion level, the loop picks each *distinct* value at most once as the head of the remaining combination. Two different iterations therefore start from different values, so their subtrees can never produce the same list. No duplicate is ever **generated** → nothing left for a set to catch.
-
-So sorting does two jobs, and only the first still matters:
-- makes duplicates adjacent → enables the skip ✅ still needed
-- canonicalises output order → let the set compare by value ❌ no longer relevant
-
-`Set<List<Integer>>` → `List<List<Integer>>`, and return `ans` directly instead of `new ArrayList<>(ans)`.
-
----
-
-### v6 — Final: the sorted-array prune
+**Reading backwards from the current index.**
 
 ```java
-if (candidates[index] > target) break;
+while (index < candidates.length && candidates[index] == candidates[index - 1]) index++;   // 🚩
 ```
 
-**Intuition:** the array is sorted ascending. If `candidates[index]` alone already exceeds `target`, then so does every element to its right. The entire remaining tail is dead. One comparison kills all of it.
+At `index == 0` this is `candidates[-1]` → `ArrayIndexOutOfBoundsException`.
 
-Before: add element → recursive call → callee checks `target < 0` → return → remove element. That's a wasted call *per remaining element*.
-After: never enter the loop body at all.
+**Anchoring the comparison to a mutating variable.** Even with the bounds fixed, the loop above
+compares `candidates[index]` against `candidates[index-1]` while `index` is being incremented — so
+after one step it's comparing *consecutive pairs*, not against the value originally declined.
 
-Biggest impact on inputs like `[1,1,1,...,1,50]` with a small target — skips whole subtrees instead of exploring and discarding them.
+**Fix both by capturing the value first and reading forward from a fixed anchor:**
 
-**Cascade effect — two base cases become dead code:**
-
-- `target < 0` — unreachable. `target - currEle` can't go negative if we never pick a `currEle` exceeding `target`.
-- `index == candidates.length` — was already dead. If true, the loop simply doesn't execute and the method returns anyway.
-
-Leaves `target == 0` as the **only** base case. That's the clean version.
-
-Beats 99%.
+```java
+int skipped = candidates[index];     // anchor — doesn't move
+int next = index + 1;                // separate cursor — index isn't mutated
+while (next < candidates.length && candidates[next] == skipped) next++;
+```
 
 ---
 
-## Final solution
+## 6. Formulation B — the for-loop
+
+The chain of skip branches *is* a loop. Flattening it puts the dedup in the loop's advance, where
+it reads more naturally.
 
 ```java
 class Solution {
@@ -237,82 +196,154 @@ class Solution {
 }
 ```
 
-> Using `int i = index` instead of mutating the `index` parameter keeps "where this call started" available — needed if you switch to the `i > index` dedup idiom below, and safer if anyone reorders the code later.
+The trailing `while` advances to the **last** duplicate; the for-update `i++` then steps past the
+run.
+
+> Use `int i = index` rather than mutating the `index` parameter — it keeps "where this call
+> started" available, which the alternative dedup idiom below needs.
+
+### ⚠️ Bugs specific to this shape
+
+**`i < candidates.length - 1`** — the last element is never picked. On `[1,2]` with target 2: at
+`i=0` pick the 1, recurse into `findCombination(1, 1)` whose loop is `1 < 1` = false; back at the
+top `i=1`, loop exits. `[2]` never generated.
+
+**Missing bounds guard on the inner `while`** — `candidates[i] == candidates[i+1]` without
+`i + 1 < length` throws on `[1,1,1]`.
+
+Note these two **mask each other**: fixing the bound makes the missing guard *more* reachable, not
+less. Fix both together.
+
+**Landing on the last duplicate instead of past it** — if the skip loop runs before the recursion
+or without the for-update, `index` still points at a copy and the duplicate is generated anyway.
+
+### Two equivalent dedup idioms
+
+```java
+// forward — advance past the run after using a value
+while (i + 1 < candidates.length && candidates[i] == candidates[i + 1]) i++;
+
+// backward — skip if this value was just used at this level (the more common idiom)
+if (i > index && candidates[i] == candidates[i - 1]) continue;
+```
+
+Same mechanism, opposite direction. The backward form needs the original `index` preserved — which
+is why `int i = index` matters — and it groups all the guards at the top of the loop beside the
+`break`.
 
 ---
 
-## Complexity
+## 7. Choosing between the two shapes
+
+| | Pick / skip | For-loop |
+|---|---|---|
+| Tree | binary | n-ary |
+| Dedup lives in | the skip branch | the loop advance |
+| Pruning | explicit `return` on the base case | `break` kills the whole tail at once |
+| Readability | closer to subsets intuition | more compact, standard idiom |
+
+Both are correct and the same asymptotics. **Write the for-loop version in interviews** — it's the
+idiom readers expect, and it generalises directly to LC 77, 90, 216.
+
+---
+
+## 8. Removing redundant guards
+
+Once the sorted prune is in place, several conditions become unreachable:
+
+- **`target < 0`** — unreachable. `target - candidates[i]` can't go negative if you never pick a
+  value exceeding `target`.
+- **A separate `candidates[index] <= target` guard on the pick** — always true after the early
+  return.
+- **`index == candidates.length`** (for-loop version) — already dead; the loop simply doesn't
+  execute.
+
+> **When a prune makes a base case unreachable, delete it.** Three checks doing one check's work is
+> noise that hides the real structure.
+
+In the pick/skip version this leaves two conditions; in the for-loop version, `target == 0` is the
+**only** base case.
+
+### Base case ordering — success before failure
+
+```java
+if (index == candidates.length || target < 0) return;   // 🚩 wrong order
+if (target == 0) { record; return; }
+```
+
+Trace `candidates = [1], target = 1`: pick the 1, recurse with `index = 1, target = 0`. The first
+check fires (`index == length`) and returns — the success check is never reached. Result `[]`
+instead of `[[1]]`.
+
+> **In backtracking, order base cases success-first.** Reaching the end of the array with target
+> exactly 0 is a win, not a dead end. Success is a fact about the state; failure is a fact about
+> the remaining options.
+
+---
+
+## 9. Sorting does two jobs
+
+Worth separating, because "I sorted, so I don't need the set" is **wrong reasoning** — the
+HashSet version sorted too and absolutely needed the set.
+
+| Job | Still needed? |
+|---|---|
+| Makes duplicates **adjacent** → enables the skip | ✅ essential |
+| **Canonicalises** output order → lets a set compare by value | ❌ irrelevant once dedup is structural |
+| Enables the **`break`** prune | ✅ bonus |
+
+**The actual argument for dropping the set:** at each recursion level, each *distinct* value is
+used at most once as the head of the remaining combination. Two iterations at the same level
+therefore start from different values, so their subtrees can never produce the same list. No
+duplicate is ever **generated**, so there's nothing for a set to catch.
+
+---
+
+## 10. Complexity
 
 ### Time — O(n log n + 2ⁿ × k) → **O(2ⁿ × k)**
 
 | Term | Source |
 |---|---|
 | `n log n` | `Arrays.sort` |
-| `2ⁿ` | recursion tree — each element is in or out, so 2ⁿ candidate subsets |
+| `2ⁿ` | recursion tree — each element is in or out |
 | `× k` | `new ArrayList<>(combination)` copies `k` elements, **once per valid combination** |
 
-**The `k` is a multiplier, not an addend.** Common mistake: writing `2ⁿ + k`. The copy happens at every leaf that succeeds, so it multiplies the leaf count. `k` = length of the combination being copied.
+**The `k` multiplies, it doesn't add.** Writing `2ⁿ + k` is the common slip — the copy happens at
+every successful leaf, so it scales with the leaf count.
 
-**Also:** `ArrayList.add(e)` appends at the tail in amortised O(1) — there is no shifting. The `k` cost comes from the **copy constructor walking the source list**, nothing to do with insertion position.
+Also: `ArrayList.add(e)` appends in amortised O(1), no shifting. The `k` comes from the **copy
+constructor walking the source list**, nothing to do with insertion position.
 
 `2ⁿ` dominates `n log n`, so the sort is normally dropped from the stated answer.
 
-**Nuance to have ready:** `2ⁿ` is a *loose upper* bound — the size of the full subset lattice. The real bound is tighter, because dedup avoids exploring the full lattice when duplicates exist, and the `break` prunes further. But you can't state a tighter bound without knowing the input distribution. Say `2ⁿ`, note it's an upper bound, mention pruning helps in practice.
+> **Nuance to have ready:** `2ⁿ` is a *loose upper* bound — the size of the full subset lattice. The
+> real bound is tighter, since dedup avoids exploring the full lattice when duplicates exist and
+> the `break` prunes further. You can't state a tighter bound without knowing the input
+> distribution. Say `2ⁿ`, note it's an upper bound, mention pruning helps in practice.
 
-**"Where does 2ⁿ come from?"** — each element is either in or out of a given combination → 2ⁿ candidate subsets → the recursion tree has that many leaves in the worst case (all elements distinct, no pruning possible).
+**"Where does 2ⁿ come from?"** Each element is either in or out → 2ⁿ candidate subsets → that many
+leaves in the worst case (all distinct, no pruning possible).
+
+Contrast LC 39, where depth is `target / min(candidates)` rather than `n`, because the pick doesn't
+advance the index.
 
 ### Space — auxiliary **O(n)**
 
 | Component | Cost |
 |---|---|
-| `combination` list | at most `n` deep → O(n) |
-| recursion call stack | one frame per level → O(n) |
+| `combination` list | at most `n` deep |
+| recursion call stack | one frame per level |
 | **total auxiliary** | **O(n)** |
 
-State O(n), not O(k) — `k ≤ n` always, so O(n) is the honest bound. Don't forget the **call stack**; it's easy to only count the explicit data structure.
+State O(n), not O(k) — `k ≤ n` always. And don't forget the **call stack**; it's easy to count only
+the explicit data structure.
 
-Output space (usually excluded, but be ready): O(2ⁿ × k) for the answer list itself.
-
----
-
-## Patterns to carry forward
-
-**1. Base case ordering: success before failure.**
-`target == 0` before `index == length`. Reaching the array's end with target exactly 0 is a win.
-
-**2. Sorting ≠ dedup.**
-Sorting makes duplicates adjacent (enabling dedup) and canonicalises output order. Removing duplicates is a separate mechanism.
-
-**3. Skip at the *same level*, not inside the subtree.**
-Duplicates arise when two iterations *at the same recursion depth* start with the same value. The dedup belongs in the loop's advance, never in the recursive call.
-
-**4. Two equivalent dedup idioms — same thing, opposite direction:**
-
-```java
-// forward — what I wrote (advance past the run after using a value)
-while (i + 1 < candidates.length && candidates[i] == candidates[i + 1]) i++;
-
-// backward — the more common idiom (skip if this value was just used)
-if (i > index && candidates[i] == candidates[i - 1]) continue;
-```
-
-The backward form needs the original `index` preserved, which is why `int i = index` matters. It also groups all guards at the top of the loop next to the `break`.
-
-**5. Sorted array ⇒ `break`, not `continue`.**
-If `candidates[i]` overshoots, so does the whole tail. `continue` would pointlessly test every remaining element.
-
-**6. Prune *before* the recursive call, not after.**
-Catching an overshoot via `target < 0` inside the callee costs an add + a call + a check + a remove. Checking `candidates[i] > target` before entering costs one comparison.
-
-**7. Pick/not-pick and the for-loop are the same tree.**
-The for loop flattens the chain of not-pick branches into iteration. Interviewers sometimes ask you to convert between them — know both.
-
-**8. When a prune makes a base case unreachable, delete it.**
-Dead conditions are noise that hides the real structure. After the `break`, both `target < 0` and `index == length` are dead.
+Output space (usually excluded, but say so rather than dropping it silently): O(2ⁿ × k).
 
 ---
 
-## Trace to verify a rewrite
+## 11. Trace to verify any rewrite
 
 ```
 candidates = [10,1,2,7,6,1,5], target = 8
@@ -321,9 +352,42 @@ sorted     = [1,1,2,5,6,7,10]
 expected: [1,1,6], [1,2,5], [1,7], [2,6]
 ```
 
-Check specifically that:
-- `[1,1,6]` appears — both 1s used, so the skip must not block *nested* reuse of an equal value
-- `[1,7]` appears exactly **once** — not twice, one per 1
-- `[10]` is never explored — `break` fires
+Check three things specifically:
 
-That pair of conditions on the 1s is the whole test. Blocking too little gives duplicate `[1,7]`; blocking too much loses `[1,1,6]`.
+- **`[1,1,6]` appears** — both 1s used, so the skip must not block *nested* reuse of an equal value
+- **`[1,7]` appears exactly once** — not once per 1
+- **`[10]` is never explored** — the `break` fires
+
+The first two together are the whole test: blocking too little duplicates `[1,7]`; blocking too much
+loses `[1,1,6]`.
+
+---
+
+## 12. Pattern
+
+> **Sort, then after declining a value skip every copy of it — duplicates are prevented by
+> construction, not filtered afterwards.**
+
+The transferable half: **in enumeration problems, a duplicate you never generate costs nothing; a
+duplicate you filter has already cost you the whole subtree.** Reach for structural dedup, and
+treat a `HashSet` over results as a sign you haven't found the real constraint yet.
+
+---
+
+## 13. Takeaways
+
+1. **Reuse and duplicates are independent problems.** `index + 1` solves one; the skip solves the
+   other.
+2. **Filtering fixes the output; pruning fixes the work.** A set over results can't recover
+   exponential time already spent.
+3. **Nested reuse of an equal value is fine; sibling reuse at the same level is the duplicate.**
+4. **Dedup lives in the loop advance or the skip branch** — never inside the recursive call.
+5. **Anchor the skip comparison to a captured value**, and read forward. Comparing against a
+   mutating index gives consecutive-pair comparisons and a negative index at 0.
+6. **Base cases: success before failure.** `target == 0` first.
+7. **Sorted array ⇒ `break`, not `continue`.** If one value overshoots, the whole tail does.
+8. **Prune before the recursive call**, not via `target < 0` inside the callee.
+9. **When a prune makes a base case unreachable, delete it.**
+10. **Sorting enables dedup; it doesn't perform it.** Two different jobs.
+11. **Pick/skip and the for-loop are the same tree** — know both, write the for-loop.
+12. **`2ⁿ × k`, not `2ⁿ + k`.** The copy multiplies the leaf count.
