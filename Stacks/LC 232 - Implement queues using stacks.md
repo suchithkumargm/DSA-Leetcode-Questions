@@ -20,7 +20,7 @@ Constraints: at most 100 calls; `pop`/`peek` are only called on a non-empty queu
 
 A stack is LIFO, a queue is FIFO — **exact opposites**, which is the whole reason this works:
 
-> ### The fact
+> ### 🔑 The fact
 > **Reversing a reversal restores the original order.**
 
 Pour stack A into stack B one element at a time and B holds A's contents **backwards** — i.e. in
@@ -241,6 +241,11 @@ about B being empty, always.**
 
 **Using `Stack` instead of `ArrayDeque`**, or mixing `push`/`add` on an `ArrayDeque`.
 
+**Declaring the fields as `ArrayDeque<Integer>` rather than `Deque<Integer>`.** Program to the
+interface: the field's type is the contract, the constructor's type is the choice of
+implementation. Swapping to `LinkedList` should then be a one-line change rather than a rename
+across the class.
+
 ---
 
 ## 9. Edge cases
@@ -296,18 +301,5 @@ gives the complexity (why it's amortised O(1) rather than O(n) every time).
    amortisation.
 4. **Never write `O(2n)`.** Drop constants — and here the constant was wrong anyway.
 5. **Extract duplicated logic between two methods that must stay in sync.**
-6. **`ArrayDeque` over `Stack`** — have the one-liner ready.
+6. **`ArrayDeque` over `Stack`** — have the one-liner ready, and declare the field as `Deque`.
 7. **Name the objection to your own follow-up answer** — recursion uses the call stack.
-
----
-
-## 13. Related problems
-
-| # | Problem | Connection |
-|---|---|---|
-| **225** | Implement Stack using Queues | ⭐ the mirror image — note the amortisation argument does **not** transfer |
-| 155 | Min Stack | auxiliary stack carrying extra state alongside the main one |
-| 622 | Design Circular Queue | queue mechanics from the other direction |
-| 946 | Validate Stack Sequences | reasoning about achievable push/pop orders |
-| 20 | Valid Parentheses | the base "stack = reversal" instinct |
-| 1381 | Design a Stack With Increment Operation | amortised reasoning on a designed data structure |
