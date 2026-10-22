@@ -254,9 +254,63 @@ class Solution {
   later `true` is larger, so the last write wins. That's how you capture a *last-true* boundary. (In
   a *first-true* problem like LC 875, you capture in the `true` branch and move `high` instead.)
 - **`balls--` before the loop** accounts for the ball at `position[0]`, which the loop never visits.
-  Decide explicitly whether the first ball is counted inside or outside the loop.
+  See the convention warning below — this is the single easiest thing to get half-right.
 - **Early exit immediately after the decrement**, not at the top of the next iteration.
 - **`return balls == 0`** catches the case where the final ball lands on the last basket.
+
+### 🚩 Pick ONE ball-counting convention
+
+There are two valid shapes, and mixing them double-counts the first ball:
+
+| | first ball counted | loop starts at | pass to the helper |
+|---|---|---|---|
+| **A** | outside the loop (`balls--` up front) | `i = 1`, with `lastPlaced = position[0]` | `m` |
+| **B** | inside the loop (the `i = 0` test succeeds immediately) | `i = 0`, with the target set to `position[0]` | `m` |
+
+Half of each — decrementing up front **and** letting the loop count `position[0]` — reports success
+one ball early.
+
+Trace `[1,2,3,4,7]`, `m = 3`, `gap = 3`, with `balls` pre-decremented to 2 *and* a loop that counts
+the first ball:
+
+```
+i=0: target=1, position[0]=1 → 1<=1 → balls=1, target=4
+i=3: position[3]=4          → 4<=4 → balls=0 → return true
+```
+
+Two placements registered, `true` returned. The ball at 7 was never checked.
+
+It often still passes, because the error only matters when the over-reported gap exceeds `hi` —
+and `hi = max − min` keeps those candidates out of the search range. **Correct by range, not by
+logic.** Check `[1,2]` with `m = 2`: a pre-decremented count returns `true` for *any* gap.
+
+### 🚩 Binary-search form: `low <= high` with the `ans` variable
+
+Two shapes get conflated:
+
+| form | loop | on false | needs `ans`? |
+|---|---|---|---|
+| **record-and-narrow** | `while (low <= high)` | `high = mid - 1` | ✅ yes |
+| **converge-on-boundary** | `while (low < high)` | `high = mid` | ❌ `low` is the answer |
+
+Mixing them — `while (low < high)` with `high = mid - 1` — can exit having skipped a candidate. With
+`low = 3, high = 4` and both feasible: `mid = 3`, `low = 4`, loop exits immediately, `ans = 3` when
+it should be 4.
+
+Use `while (low <= high)` with `high = mid - 1` and the recorded `ans`. And `ans = mid` suffices —
+`Math.max(ans, mid)` is redundant, since `low` only moves right so each feasible `mid` exceeds the
+last recorded one.
+
+### 🚩 `Math.ceil` on integer division does nothing
+
+`Math.ceil(low + (high - low) / 2)` — the division truncates to an `int` before `ceil` ever sees it.
+A ceiling-mid is only needed in the `while (low < high)` / `high = mid` form, to avoid an infinite
+loop when `low` and `high` are adjacent; with `low <= high` it's unnecessary.
+
+### 🚩 Stopping the loop with a guard instead of returning
+
+`for (...; i < n && balls >= 0; i++)` lets one extra iteration run after `balls` hits 0 — the
+condition is checked at the *top* of the next pass. Return the instant the count reaches zero.
 
 ---
 
@@ -360,21 +414,11 @@ Note it says nothing about balls, baskets, or cows. That's why it transfers.
 7. **Write the feasibility function's signature first** — array, candidate, constraint.
 8. **Capture the boundary in the branch matching the direction:** last-true ⇒ record on `true` then
    `low = mid + 1`; first-true ⇒ record on `true` then `high = mid − 1`.
-9. **`Arrays.sort` is O(log n) space**, not O(1).
-10. **Don't merge separate time terms.** `O(n log n) + O(n log k)` stays as two terms.
-11. **Know your overflow bound rather than reciting it** — but write the safe form anyway.
-
----
-
-## 14. Related problems
-
-| # | Problem | Direction | Shared idea |
-|---|---|---|---|
-| 875 | Koko Eating Bananas | **min**imise | the mirror image — compare discard directions side by side |
-| 1482 | Min Days to Make m Bouquets | **min**imise | same mirror |
-| 410 | Split Array Largest Sum | **min**imise the max | greedy feasibility check, near-identical shape |
-| 1011 | Capacity to Ship Packages in D Days | **min**imise the max | 410 with different dressing |
-| 774 | Minimize Max Distance to Gas Station | **min**imise the max | real-valued answer space — binary search on doubles |
-| **1231** | Divide Chocolate | **max**imise the min | ⭐ the closest twin — do this next to confirm the flip is internalised |
-| 2064 | Minimized Maximum Products | **min**imise the max | |
-| 4 | Median of Two Sorted Arrays | — | binary search on a *partition*, not on the answer |
+9. **Pick one ball-counting convention and keep it.** Decrementing up front *and* counting the
+   first ball in the loop reports success one ball early — and often still passes, because the
+   search range hides it.
+10. **Match the loop form to the discard step:** `low <= high` with `high = mid - 1` and a recorded
+    `ans`, or `low < high` with `high = mid` and no `ans`. Mixing them can skip a candidate.
+11. **`Arrays.sort` is O(log n) space**, not O(1).
+12. **Don't merge separate time terms.** `O(n log n) + O(n log k)` stays as two terms.
+13. **Know your overflow bound rather than reciting it** — but write the safe form anyway.
