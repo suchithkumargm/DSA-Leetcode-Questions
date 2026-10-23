@@ -169,10 +169,72 @@ The recursion can't return both values. Three ways to carry the second one:
 1. **Instance field** (above) — simplest, and what interviewers expect.
 2. **`int[1]` holder** passed down — avoids mutable instance state, useful if the method must be
    static or thread-safe.
-3. **Return a small object/record** `(height, diameter)` — cleanest conceptually, most ceremony.
+3. **Return a small object/record** `(height, diameter)` — see below.
 
-⚠️ **With an instance field, reset it** if the same `Solution` object could be reused across calls.
-LeetCode constructs a fresh one per test, so it doesn't bite there — but in real code it's a bug.
+### ⚠️ Never make the field `static`
+
+A `static` field belongs to the **class**, not the instance, so it is **never reset**. LeetCode
+constructs a fresh `Solution` per test case — which resets an *instance* field but does nothing for
+a static one. Test 2 starts with test 1's value still in it, and since `Math.max` can only hold or
+raise, you get the maximum diameter across every test so far and never anything smaller.
+
+**And it isn't a LeetCode quirk.** Any mutable state outliving one invocation is a bug waiting for
+the second call — reuse a single `Solution` instance across two trees and an *instance* field fails
+identically.
+
+**Reset at the entry point** and both problems disappear:
+
+```java
+public int diameterOfBinaryTree(TreeNode root) {
+    maxDiameter = 0;          // safe to call more than once
+    height(root);
+    return maxDiameter;
+}
+```
+
+Saying *"I'd reset this at the entry point so the method is re-entrant"* is worth a point in an
+interview.
+
+### Option 3 in full — returning a small class
+
+```java
+class Solution {
+    public int diameterOfBinaryTree(TreeNode root) {
+        return findNodeInfo(root).diameter;
+    }
+
+    private NodeInfo findNodeInfo(TreeNode node) {
+        if (node == null) return new NodeInfo(0, 0);
+
+        NodeInfo left  = findNodeInfo(node.left);
+        NodeInfo right = findNodeInfo(node.right);
+
+        int diameter = Math.max(Math.max(left.diameter, right.diameter),
+                                left.height + right.height);
+        int height = Math.max(left.height, right.height) + 1;
+
+        return new NodeInfo(diameter, height);
+    }
+}
+
+class NodeInfo {
+    int diameter, height;
+    NodeInfo(int diameter, int height) { this.diameter = diameter; this.height = height; }
+}
+```
+
+Correct, no mutable state, same O(n) time. **Two costs:**
+
+- **It allocates one object per node** — n allocations and the GC churn that follows, where the
+  field version allocates nothing.
+- **It carries the diameter upward, and nobody upward reads it as a diameter.** Each parent only
+  takes a max over it — which is exactly what a single field does for free. **A value in the return
+  type that no caller consumes is the sign it doesn't belong there.**
+
+**Where the class genuinely earns its place:** when the parent actually *acts* on more than one
+child value. LC 110 (balanced) needs the height plus a signal the parent branches on; LC 124 (max
+path sum) needs the best downward sum, with the global tracked separately. Know both forms and pick
+by whether the parent consumes the second value.
 
 ### The ordering detail
 
@@ -206,9 +268,35 @@ Tempting, but then the parent has nothing to build its own candidate from. The p
 
 Correct but O(n²) on a skewed tree.
 
-### 🚩 Forgetting to reset an instance field between invocations
+### 🚩 Driving the recursion from the children instead of the root
 
-Not an issue on LeetCode; is one in real code.
+```java
+public int diameterOfBinaryTree(TreeNode root) {
+    int leftHeight  = height(root.left);    // 🚩
+    int rightHeight = height(root.right);   // 🚩
+    return maxDiameter;
+}
+```
+
+The root is never evaluated as a turning point. Trace `[1,2,3]`: both calls hit leaves, each with
+candidate 0, so `maxDiameter` stays 0 — and the root's own candidate of `1 + 1 = 2` is never
+computed.
+
+**One call, on the root.** The recursion reaches every node including the root, which is the whole
+point of accumulating in a field. The driver is two lines:
+
+```java
+height(root);
+return maxDiameter;
+```
+
+A `root == null` guard in the driver is also dead code — `height(null)` returns 0 and `maxDiameter`
+stays 0.
+
+### 🚩 A `static` accumulator, or no reset
+
+See §4. `static` is never reset between test cases; an instance field is safe on LeetCode but not
+across two calls on the same object. Reset at the entry point.
 
 ### 🚩 Claiming O(1) space
 
@@ -332,4 +420,10 @@ return the value the recursion needs and accumulate the answer in a field.
 6. **Update the field before returning**, using the child heights.
 7. **Brute force is O(n²) skewed, O(n log n) balanced.** Quote the worst case.
 8. **Space is O(h)**, never O(1).
-9. **Reset an instance field** if the object could be reused.
+9. **Drive the recursion from the root**, one call — not from the children, or the root is never
+   a turning point.
+10. **Never `static`** for the accumulator; reset an instance field at the entry point so the
+    method is re-entrant.
+11. **If no caller consumes the second return value, it belongs in a field, not the return type.**
+    A returned class costs one allocation per node and earns its place only when the parent
+    actually acts on that value (LC 110, 124).
