@@ -213,6 +213,15 @@ the-middle, so you pick your poison.
 
 ### Idea
 
+> ⚠️ **First, clear up what the `ArrayList` actually holds.** No new list is ever built — in any
+> version. `reverseLL` rewires the *existing* nodes in place; the only `new ListNode` anywhere is
+> the dummy. The `ArrayList` stores **pointers into the same nodes**, kept solely so you can find
+> each group's head again during the stitch pass.
+>
+> So the question isn't "how do I build the result without a list?" It's **"why do I need to find
+> these heads again later?"** — and the answer is that you don't, if you attach each group the
+> moment you reverse it.
+
 Why is the list needed at all? Because you produce *all* the groups first, *then* connect them.
 Connect each group **the moment you create it** and there's nothing to store.
 
@@ -528,23 +537,10 @@ be linked in the moment it's produced, and nothing needs collecting.
 5. **Seed `prev` with the continuation** instead of `null` when reversing a sub-segment.
 6. **Write link assignments in data-flow order:** `previousTail.next = currentHead`.
 7. **If you're walking to find something, ask whether you already had it.**
-8. **Land *on* the boundary node in a lookahead**, not past it.
-9. **Two variables that are always equal = one variable.**
-10. **An unconditional assignment is fine only if you can state why both cases are correct.**
-11. **Recursion depth is per *group*, not per node** → O(n/k) stack, not O(1), not O(k).
-12. **`while (true)` is fine** with a single break at the top of the body.
-
----
-
-## 15. Related problems
-
-| # | Problem | Shared idea |
-|---|---|---|
-| 206 | Reverse Linked List | the base sub-routine |
-| 92 | Reverse Linked List II | reverse a sub-segment + dummy node |
-| 24 | Swap Nodes in Pairs | this problem with `k = 2` — good warm-up |
-| 19 | Remove Nth Node From End | dummy node + lookahead pointer |
-| 61 | Rotate List | size + re-link |
-| 143 | Reorder List | reverse half, then interleave |
-| 234 | Palindrome Linked List | reverse half in place |
-| 138 | Copy List with Random Pointer | in-place pointer weaving; same "the list is its own scratch space" idea |
+8. **Nothing is ever constructed here.** The nodes are rewired in place; any collection you reach
+   for holds pointers into the same nodes, and exists only because you deferred the linking.
+9. **Land *on* the boundary node in a lookahead**, not past it.
+10. **Two variables that are always equal = one variable.**
+11. **An unconditional assignment is fine only if you can state why both cases are correct.**
+12. **Recursion depth is per *group*, not per node** → O(n/k) stack, not O(1), not O(k).
+13. **`while (true)` is fine** with a single break at the top of the body.
