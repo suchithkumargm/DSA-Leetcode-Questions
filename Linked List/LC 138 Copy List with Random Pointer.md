@@ -481,15 +481,3 @@ list instead of two fixed pointers.
 > sign-flipping elsewhere.
 
 ---
-
-## 14. Related problems
-
-| # | Problem | Connection |
-|---|---|---|
-| 133 | Clone Graph | Same map-then-wire pattern, general graph |
-| 1485 | Clone Binary Tree With Random Pointer | Direct tree analogue |
-| 430 | Flatten Multilevel Doubly Linked List | Extra pointer per node, in-place rewiring |
-| 146 | LRU Cache | HashMap + hand-rolled DLL; map-to-node lookup |
-| 287 | Find the Duplicate Number | "embed the mapping in the structure" — index-as-pointer |
-| 41 | First Missing Positive | same meta-lesson: in-place marking instead of a side set |
-| 25 | Reverse Nodes in k-Group | in-place pointer choreography; dummy node discipline |

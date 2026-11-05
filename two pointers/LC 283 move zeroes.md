@@ -290,17 +290,3 @@ interviews. Worth making automatic.
 7. **Swap vs overwrite-then-fill is a genuine trade** (1 pass / 3 writes vs 2 passes / 1 write).
    Name both.
 8. **`!= 0`, never `> 0`.** Negatives are non-zero.
-
----
-
-## 12. Related problems
-
-| # | Problem | Connection |
-|---|---|---|
-| 27 | Remove Element | Identical boundary pointer, different predicate — the bare-bones version |
-| 26 | Remove Duplicates from Sorted Array | Same write-pointer; predicate is "differs from previous" |
-| 80 | Remove Duplicates from Sorted Array II | Same, allowing two copies |
-| 75 | Sort Colors (Dutch National Flag) | **Two** boundary pointers instead of one |
-| 88 | Merge Sorted Array | Write pointer filled from the back |
-| 905 | Sort Array By Parity | Same pattern, parity predicate |
-| 2149 | Rearrange Array Elements by Sign | Two boundary pointers, alternating |

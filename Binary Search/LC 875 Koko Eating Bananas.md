@@ -541,23 +541,6 @@ return lo;
 **Recognition signals:** "minimum capacity", "minimum speed", "smallest largest sum", "minimise the maximum", "minimum days", and an answer range far larger than the input array.
 
 **For maximisation** ("largest X such that..."), the predicate flips to `T...T F...F` and you search for the last `T`: use `while (lo < hi)` with `mid = lo + (hi - lo + 1) / 2` (upper mid, to avoid an infinite loop), `lo = mid` on feasible, `hi = mid - 1` otherwise.
-
----
-
-## 10. Related Problems (same pattern)
-
-| Problem | Search space | Predicate |
-|---------|--------------|-----------|
-| **LC 1011** Ship Packages in D Days | ship capacity `[max(w), sum(w)]` | can ship in `d` days with this capacity? |
-| **LC 410** Split Array Largest Sum | max subarray sum `[max, sum]` | can split into `<= k` parts under this cap? |
-| **LC 1482** Min Days to Make Bouquets | day `[min(bloom), max(bloom)]` | enough adjacent bloomed flowers by this day? |
-| **LC 2064** Minimized Maximum Products per Store | products per store `[1, max(quantities)]` | stores needed `<= n`? |
-| **LC 1283** Smallest Divisor Given Threshold | divisor `[1, max(nums)]` | `Σ ceil(nums[i]/d) <= threshold`? **Near-identical to 875** |
-| **LC 1552** Magnetic Force Between Balls | min gap (maximisation variant) | can place `m` balls with at least this gap? |
-| **LC 1898** Max Removable Characters | removals count | is it still a subsequence? |
-
-**LC 1283 is the same problem with the story removed.** Solve it right after this one to lock the pattern in.
-
 ---
 
 ## 11. Retrospective — what the journey actually taught

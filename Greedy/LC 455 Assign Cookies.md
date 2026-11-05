@@ -343,33 +343,6 @@ This is the detail that catches people out, and interviewers do ask.
 
 ---
 
-## 9. Related problems
-
-### Literally the same problem
-
-- **LC 2410 — Maximum Matching of Players With Trainers.** Identical: `players[i] <= trainers[j]`. Same code, renamed variables. Free solve.
-
-### Same pattern: sort + greedy matching
-
-- **LC 870 — Advantage Shuffle** (Medium) — sort both, greedily beat the opponent with the smallest card that wins; otherwise sacrifice your weakest. Direct escalation of this idea.
-- **LC 881 — Boats to Save People** (Medium) — sorted two pointers, but from **opposite ends**. Good contrast: here both pointers move forward; there they converge.
-- **LC 1710 — Maximum Units on a Truck** ✅ (done) — sort by value density, take greedily.
-- **LC 1200 — Minimum Absolute Difference** ✅ (done) — sorting makes the answer adjacent.
-
-### Greedy interval family (already covered)
-
-- **LC 435 — Non-overlapping Intervals** ✅
-- **LC 646 — Maximum Length of Pair Chain** ✅
-- **LC 56 — Merge Intervals** ✅
-
-### Suggested next steps in Greedy
-
-- **LC 134 — Gas Station** (Medium) — greedy where the safe choice is genuinely non-obvious; needs its own proof.
-- **LC 621 — Task Scheduler** (Medium) — greedy + counting, formula-based insight.
-- **LC 45 / 55 — Jump Game II / Jump Game** — greedy reachability, very common in interviews.
-
----
-
 ## 10. Recall card (read this first on revision)
 
 > **Problem:** max children contented, `s[j] >= g[i]`, one cookie each.

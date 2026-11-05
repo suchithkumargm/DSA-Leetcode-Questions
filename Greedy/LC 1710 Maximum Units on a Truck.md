@@ -345,19 +345,6 @@ public int maximumUnits(int[][] boxTypes, int truckSize) {
 
 ---
 
-## 9. Related problems (same greedy skeleton)
-
-| # | Problem | Connection |
-|---|---|---|
-| **1710** | Maximum Units on a Truck | this one — fractional knapsack, weight = 1 |
-| **502** | IPO | greedy + heap under a capital constraint |
-| **1029** | Two City Scheduling | sort by cost *difference*, same "which first" reasoning |
-| **871** | Min Number of Refueling Stops | greedy with deferred choice (heap) |
-| **455** | Assign Cookies | two-pointer greedy after sorting both sides |
-| **0/1 Knapsack** | (GfG / CSES) | **contrast:** unequal weights → greedy fails, needs DP |
-
----
-
 ## 10. Reference — true Fractional Knapsack in Java
 
 For when weights genuinely differ. Note the `double` return and the real ratio sort.

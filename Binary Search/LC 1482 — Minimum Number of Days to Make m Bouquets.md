@@ -466,26 +466,6 @@ For **maximisation**, flip: on `feasible(mid)` do `ans = mid; low = mid + 1;`.
 
 ---
 
-## 12. Related Problems (same skeleton)
-
-| Problem | Binary search over | Feasibility predicate |
-|---|---|---|
-| **LC 875** Koko Eating Bananas | eating speed | hours needed ≤ h |
-| **LC 1011** Ship Packages in D Days | ship capacity | days needed ≤ D |
-| **LC 410** Split Array Largest Sum | max allowed subarray sum | splits needed ≤ k |
-| **LC 1283** Smallest Divisor Given Threshold | divisor | sum of ceilings ≤ threshold |
-| **LC 1760** Minimum Limit of Balls in a Bag | max balls per bag | operations needed ≤ maxOps |
-| **LC 2064** Minimized Maximum Products per Store | products per store | stores needed ≤ n |
-| **LC 774** Minimize Max Distance to Gas Station | distance (float — careful) | stations needed ≤ k |
-| **LC 1552** Magnetic Force Between Two Balls | minimum gap (**maximise**) | can place m balls |
-| **LC 1539 / 540 / 33** | — | plain binary search variants, worth revisiting |
-
-**Drill order suggestion:** 875 → 1011 → 1283 → 1482 → 1760 → 410 → 1552 (maximisation flip) → 774 (floating point).
-
-Once the monotone-predicate shape is recognised on sight, each of these is ~10 minutes: write the checker, plug in the template.
-
----
-
 ## 13. One-Minute Recall
 
 1. Answer range is 10⁹, so **never** walk the day axis → binary search on the answer.

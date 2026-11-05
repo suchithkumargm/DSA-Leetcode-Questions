@@ -368,19 +368,6 @@ Ring buffers: log rotation, audio/video sample buffers, Disruptor (LMAX), Kafka 
 
 ---
 
-## 12. Related problems
-
-| Problem | Why next |
-|---|---|
-| **641. Design Circular Deque** | Direct sequel. Insert/delete at both ends. **Use the `size` counter (Approach 4)** — the sentinel gets messy across two ends. Watch `front = (front - 1 + capacity) % capacity` for `insertFront` — the `+ capacity` is mandatory. |
-| **155. Min Stack** | Array-backed stack. Parallel `minSoFar[]` array, `minSoFar[i] = min` of everything at/below `i` → O(1) `getMin()`. Top index is always `size - 1`; don't keep a separate `top` field. |
-| **232. Implement Queue using Stacks** | Amortized O(1) via two stacks; only transfer when the out-stack is empty. |
-| **225. Implement Stack using Queues** | The reverse. One-queue solution: after enqueue, rotate `size - 1` elements. |
-| **933. Number of Recent Calls** | Sliding-window queue, real use of the pattern. |
-| **239. Sliding Window Maximum** | Monotonic deque — the deque from 641 put to work. |
-| **146. LRU Cache** (done) | Same "design" muscle: pick the state representation so every op is O(1). |
-
----
 
 ## 13. Recall checklist
 

@@ -446,21 +446,6 @@ Log rotation, audio/video sample buffers, LMAX Disruptor, Kafka's producer recor
 
 ---
 
-## 12. Related problems
-
-| Problem | Link to this one |
-|---|---|
-| **622. Design Circular Queue** (done) | Prereq. Single-ended, pointers only move forward. See `LC622-Design-Circular-Queue.md`. |
-| **239. Sliding Window Maximum** | **Do this next.** The monotonic deque put to work — this is *why* the deque matters. Deque of indices, evict from front when out of window, evict from rear while smaller than the incoming element. O(n). |
-| **862. Shortest Subarray with Sum ≥ K** | Monotonic deque over a prefix-sum array. Hard, and the natural sequel to 239. |
-| **1696. Jump Game VI** | Monotonic deque + DP. |
-| **155. Min Stack** | Array-backed stack, parallel `minSoFar[]`. `top` index is always `size - 1` — don't keep a separate field (same "derive, don't maintain" lesson). |
-| **232 / 225. Queue via Stacks / Stack via Queues** | Same design muscle, different substrate. |
-| **146. LRU Cache** (done) | The general lesson: pick the state representation so every op is O(1) *and* invariants can't desync. |
-| **933. Number of Recent Calls** | Simplest real application of a sliding queue. |
-
----
-
 ## 13. Recall checklist
 
 - [ ] Which of the four deque operations move a pointer **backward**? *(`insertFront`, `deleteLast`)*

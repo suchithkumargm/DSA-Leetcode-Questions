@@ -25,7 +25,6 @@ Output: [[], [1], [1,2], [1,2,2], [2], [2,2]]
 6. [Complexity, explained from scratch](#complexity)
 7. [The loop-form alternative](#loop-form)
 8. [Java gotchas that bit me](#gotchas)
-9. [Related problems](#related)
 10. [Recall checklist](#recall)
 
 ---
@@ -482,25 +481,6 @@ loop variable mid-body is a real bug source — introduce a separate `next` when
 original still has work to do.
 
 ---
-
-<a name="related"></a>
-## Related problems — same skip rule
-
-| # | Problem | What changes |
-|---|---|---|
-| **78** | Subsets | No duplicates. Drop the sort and the guard entirely. |
-| **90** | Subsets II | ← this one |
-| **39** | Combination Sum | No dupes in input, but **unlimited reuse** → recurse on `i`, not `i+1`. Good contrast. |
-| **40** | Combination Sum II | Sort + `i > start` skip, plus a target sum. Nearest neighbour to 90. |
-| **47** | Permutations II | Order matters, so sorted-adjacent alone **isn't enough** — needs a `used[]` array. |
-
-**LC 47 is the one people trip on.** Do it right after this while the skip logic is
-fresh, and pay attention to why the guard becomes
-`i > 0 && nums[i] == nums[i-1] && !used[i-1]`.
-
----
-
-<a name="recall"></a>
 ## Recall checklist
 
 Read these before re-solving; if any is fuzzy, re-read that section.
