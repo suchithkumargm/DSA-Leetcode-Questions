@@ -136,6 +136,39 @@ This is correct but forces an ambiguous exit — you can't tell from the loop en
 so you need a post-loop `if` to disambiguate. Keep the check **inside** the body and the two exits
 are unambiguous: returning from inside means cycle, falling out means no cycle.
 
+### A `do-while` with the guards at the bottom
+
+```java
+do {
+    slow = slow.next;
+    fast = fast.next.next;                                        // 🚩 dereferenced first
+} while (fast != null && fast.next != null && slow != fast);      //    checked after
+```
+
+This usually *passes*, because the bottom condition protects the **next** iteration's dereference.
+But nothing has been checked before the **first** one, so its safety depends entirely on the
+caller's guarantees and on no line ever moving.
+
+**The guard belongs in a `while` header**, where it runs before any hop. Then the top
+`if (head == null || head.next == null)` guard becomes unnecessary too.
+
+This shape usually appears *because* `slow != fast` was put in the condition — see above. Fix that
+and the do-while is no longer needed.
+
+### Solving LC 142 when the question was LC 141
+
+```java
+// ... after the meeting:
+slow = head;
+while (slow != fast) { slow = slow.next; fast = fast.next; }   // 🚩 not asked for
+```
+
+Finding the cycle's **entrance** is a different problem. LC 141 wants a boolean, and everything
+after the meeting is work the answer doesn't use.
+
+> **Phase 1 of Floyd's is detection; phase 2 is location.** LC 141 needs only phase 1 — but it *is*
+> still Floyd's. "I used Floyd's, detection only" is the accurate way to describe it.
+
 ### `if (x) return true; else return false;`
 
 Converting a boolean into a boolean. Write `return slow == fast;`.
@@ -275,5 +308,6 @@ cycle question: LC 142, LC 202 (Happy Number), LC 287 (Find the Duplicate Number
 6. **`return slow == fast;`** — never `if (x) return true; else return false;`.
 7. **The HashSet version must key on nodes, not values** — it relies on reference identity.
 8. **Never offer a solution that mutates the input** without attaching the objection yourself.
-
----
+9. **Guards go in a `while` header, not a `do-while` footer.** A bottom condition protects the next
+   iteration, never the first.
+10. **Stop at the meeting.** The entrance is LC 142's question — but this is still Floyd's, phase 1.
